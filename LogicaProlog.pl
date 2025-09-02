@@ -140,37 +140,46 @@ productos_comunes(Usuario1, Usuario2, Count) :-
     length(Productos, Count).
 
 similitud_usuarios(Usuario1, Usuario2, Similitud) :-
+    usuario(Usuario1),
+    usuario(Usuario2),
     Usuario1 \= Usuario2,
     productos_comunes(Usuario1, Usuario2, Comunes),
+    Comunes > 0,
     findall(P, compro(Usuario1, P), P1),
     findall(P, compro(Usuario2, P), P2),
     length(P1, L1),
     length(P2, L2),
-    Total is L1 + L2 - Comunes,
-    (Total > 0 -> Similitud is Comunes / Total ; Similitud = 0).
+    MinLength is min(L1, L2),
+    Similitud is Comunes / MinLength.
 
 recomendar_item(Usuario, ProductoRecomendado) :-
+    usuario(Usuario),
+
     findall([Sim, UsuarioSimilar], 
             (similitud_usuarios(Usuario, UsuarioSimilar, Sim), Sim > 0), 
             Similitudes),
-    sort(1, @>=, Similitudes, [[_|[MasSimilar]]|_]),
 
+    Similitudes \= [],
+
+    sort(1, @>=, Similitudes, SimilitudesOrdenadas),
+
+    SimilitudesOrdenadas = [[_,MasSimilar]|_],
+    
     calificacion_alta(MasSimilar, ProductoRecomendado),
     \+ ha_comprado(Usuario, ProductoRecomendado).
 
 recomendar_lista(Usuario, ListaRecomendaciones) :-
-    % Obtener todos los usuarios similares
     findall([Sim, UsuarioSimilar], 
             (similitud_usuarios(Usuario, UsuarioSimilar, Sim), Sim > 0.1), 
             UsuariosSimilares),
     sort(1, @>=, UsuariosSimilares, UsuariosOrdenados),
-
+    
     findall(Producto, 
             (member([_, UsuSim], UsuariosOrdenados),
              calificacion_alta(UsuSim, Producto),
              \+ ha_comprado(Usuario, Producto)), 
             TodosProductos),
-
+    
     list_to_set(TodosProductos, ProductosUnicos),
     (length(ProductosUnicos, Len), Len >= 5 ->
         append(ListaRecomendaciones, _, ProductosUnicos),
@@ -183,14 +192,12 @@ recomendacion_recursiva(Usuario, ProductoRecomendado) :-
     findall(Cat, (compro(Usuario, P), categoria(P, Cat), calificacion_alta(Usuario, P)), CatsPreferidas),
     list_to_set(CatsPreferidas, CategoriasUnicas),
     
-    % Buscar recursivamente en categorías relacionadas
     buscar_recomendacion_recursiva(Usuario, CategoriasUnicas, [], ProductoRecomendado).
 
 buscar_recomendacion_recursiva(Usuario, _, Visitadas, Producto) :-
     categoria(Producto, Cat),
     \+ member(Cat, Visitadas),
     \+ ha_comprado(Usuario, Producto),
-    % Verificar que alguien similar haya calificado bien este producto
     similitud_usuarios(Usuario, OtroUsuario, Sim),
     Sim > 0.2,
     calificacion_alta(OtroUsuario, Producto).
@@ -198,7 +205,7 @@ buscar_recomendacion_recursiva(Usuario, _, Visitadas, Producto) :-
 buscar_recomendacion_recursiva(Usuario, [Cat|RestoCats], Visitadas, Producto) :-
     \+ member(Cat, Visitadas),
     NuevasVisitadas = [Cat|Visitadas],
-
+    
     findall(NuevaCat, 
             (compro(UsuarioRel, ProductoCat),
              categoria(ProductoCat, Cat),
@@ -215,9 +222,9 @@ top_10_items_usuarios(ListaUsuarios, Top10) :-
     findall([Producto, Count], 
             contar_calificaciones_altas(ListaUsuarios, Producto, Count),
             ProductosConConteo),
-
+    
     sort(2, @>=, ProductosConConteo, ProductosOrdenados),
-
+    
     tomar_primeros_10(ProductosOrdenados, Top10).
 
 contar_calificaciones_altas(ListaUsuarios, Producto, Count) :-
