@@ -152,6 +152,7 @@ similitud_usuarios(Usuario1, Usuario2, Similitud) :-
     MinLength is min(L1, L2),
     Similitud is Comunes / MinLength.
 
+% Referencia: Recommender Systems Handbook, Ricci et al., 2015
 recomendar_item(Usuario, ProductoRecomendado) :-
     usuario(Usuario),
 
@@ -168,6 +169,7 @@ recomendar_item(Usuario, ProductoRecomendado) :-
     calificacion_alta(MasSimilar, ProductoRecomendado),
     \+ ha_comprado(Usuario, ProductoRecomendado).
 
+%Referencia: Collaborative Filtering Recommender Systems, Su & Khoshgoftaar, 2009
 recomendar_lista(Usuario, ListaRecomendaciones) :-
     findall([Sim, UsuarioSimilar], 
             (similitud_usuarios(Usuario, UsuarioSimilar, Sim), Sim > 0.1), 
